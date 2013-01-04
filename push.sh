@@ -6,12 +6,13 @@ if [ -n "$(cd . && git status -s)" ]; then
 fi
 
 wintersmith build --clean
+rsync -av --delete --exclude .git build/ blog/
 
-if [ -n "$(cd build && git status -s)" ]; then
-  echo "There are uncommitted changes in ./build"
+if [ -n "$(cd blog && git status -s)" ]; then
+  echo "There are uncommitted changes in ./blog"
   exit 1
 fi
 
 (cd . && git push)
-(cd ./build && git push)
+(cd ./blog && git push)
 
