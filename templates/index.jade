@@ -1,14 +1,11 @@
-extends layout
-
-block content
-  include author
-  //- underscore helps us filter and sort our articles
-  - var articles = _.chain(contents.articles._.directories).map(function(item) {
-  -   // map articles to index pages of subdirectories of 'articles'
-  -   return item.index
-  - }).compact().sortBy(function(item) { // compact removes any directories w/o an index
-  -   // sort them by date
-  -   return -item.date
-  - }).first(5).value() // and finally take the first 5
-  script
-    document.location = "#{articles[0].url}";
+//- underscore helps us filter and sort our articles
+- var articles = _.chain(contents.articles._.directories).map(function(item) {
+-   // map articles to index pages of subdirectories of 'articles'
+-   return item.index
+- }).compact().sortBy(function(item) { // compact removes any directories w/o an index
+-   // sort them by date
+-   return -item.date
+- }).first(5).value() // and finally take the first 5
+html
+  head
+    meta(http-equiv='refresh', content='0; url=#{articles[0].url}')
