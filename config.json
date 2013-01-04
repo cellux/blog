@@ -1,0 +1,9 @@
+{
+  "locals": {
+    "url": "http://cellux.github.com",
+    "name": "Raspberry Pie",
+    "owner": "cellux",
+    "description": "My personal adventures in the world of the Raspberry Pi",
+    "index_articles": 3
+  }
+}
