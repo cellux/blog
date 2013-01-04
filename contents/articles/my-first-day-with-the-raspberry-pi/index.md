@@ -49,5 +49,4 @@ cat 2012-12-16-wheezy-raspbian.img > /dev/sdb
 
 where `/dev/sdb` was the device corresponding to the SD card which I inserted into my Linux netbook.
 
-After the image has been written to the card, I removed it from my netbook, inserted it into the SD card slot on the Raspberry Pi, connected the HDMI cable to my TV, powered on the gizmo and watched the messages of the kernel - and later Raspbian - flying by, finally followed by a login prompt.
-
+After the image had been written to the card, I removed it from my netbook, inserted it into the SD card slot on the Raspberry Pi, connected the HDMI cable to my TV, powered on the gizmo and watched the messages of the kernel - and later Raspbian - flying by, finally followed by a login prompt.
