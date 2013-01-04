@@ -10,15 +10,5 @@ block content
   -   // sort them by date
   -   return -item.date
   - }).first(5).value() // and finally take the first 5
-  each article in articles
-    article.post
-      header
-        h2
-          a(href=article.url)= article.title
-        p
-          mixin author(article.metadata.author)
-      section.content!= article.intro
-      if article.hasMore
-        p.read-more
-          a(href=article.url) read more
-  a(href='archive.html')#archive Visit the archives!
+  script
+    document.location = "#{articles[0].url}";
