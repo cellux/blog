@@ -12,13 +12,16 @@ html(lang='en')
       link(rel='stylesheet', href='/css/fbg.css')
       link(rel='stylesheet', href='/css/main.css')
   body
-    div.container_12
+    .container_12
       header
-        div
-          img(src='/images/raspberry.jpg', width='200')
-          img(src='/images/adventures_in_the_world_of_the_raspberry_pi.png', style='padding-left: 220px')
-        div
+        .grid_4
+          img(src='/images/raspberry.jpg', height='184px')
+        .grid_7.suffix_1
+          img(src='/images/adventures_in_the_world_of_the_raspberry_pi.png', style='float: right; margin-top: 161px;')
+        .clear
+        .grid_12
           img(src='/images/sep.png')
+        .clear
       div#content
         block content
           h2 Welcome to zombocom!
