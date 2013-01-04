@@ -33,7 +33,7 @@ At startup, the VideoCore IV GPU gets control and initiates the boot process whi
 
 1. The GPU executes the first stage bootloader which is stored in ROM
 2. The first stage bootloader looks for a FAT32 partition on the SD card (this must be the first partition of the possible four) and loads the second stage boot loader from the file `bootcode.bin` into the L2 cache
-3. `bootcode.bin` initializes the 512 MB SDRAM in the SoC, and loads the third stage loader from `start.elf` into main memory
+3. `bootcode.bin` initializes the 512 MB SDRAM in the SoC, and loads the third stage loader from `start.elf` into main memory (`start.elf` contains the GPU firmware as well)
 4. `start.elf` reads the file `config.txt` and configures the system accordingly
 5. `start.elf` reads a kernel command line from `cmdline.txt` and a kernel image from `kernel.img`
 6. the GPU passes control to the ARM CPU which starts executing the kernel
