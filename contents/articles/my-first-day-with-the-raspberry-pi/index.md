@@ -44,7 +44,7 @@ At startup, the VideoCore IV GPU gets control and initiates the boot process whi
 6. the GPU passes control to the ARM CPU which starts executing the kernel
 7. the kernel mounts a root partition from somewhere (typically from the second partition of the SD card), and runs `/sbin/init` as usual
 
-On my first day, I just wanted to make sure that everything works as it should, so I downloaded a pre-built Linux distribution image from the foundation's website and copied it to the SD card:
+On my first day, I just wanted to make sure that everything works as it should, so I downloaded a pre-built Linux distribution image from the foundation's website - which contains both the FAT32 partion mentioned above, plus an ext4 filesystem on the second partition serving as the root fs for Linux - and copied it to the SD card:
 
 ```bash
 wget http://downloads.raspberrypi.org/images/raspbian/2012-12-16-wheezy-raspbian/2012-12-16-wheezy-raspbian.zip
@@ -52,8 +52,8 @@ unzip 2012-12-16-wheezy-raspbian.zip
 cat 2012-12-16-wheezy-raspbian.img > /dev/sdb
 ```
 
-`/dev/sdb` was the device corresponding to the SD card inserted into my Linux netbook.
+(As you see, the SD card was seen as `/dev/sdb` by my Linux netbook.)
 
-After the image had been written to the card, I removed it from my netbook, inserted it into the SD card slot on the Raspberry Pi, connected the HDMI cable to my TV, powered on the gizmo and watched the messages of the kernel - and later Raspbian - flying by, finally followed by a login prompt.
+After the image had been written to the card, I removed it from the netbook, inserted it into the SD card slot on the Raspberry Pi, connected the HDMI cable to my TV, powered on the gizmo and watched the messages of the kernel - and later Raspbian - fly by, finally followed by a login prompt.
 
 Success!
