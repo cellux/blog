@@ -1,6 +1,6 @@
 ---
 title: My first day with the Raspberry Pi
-author: clx
+author: cellux
 date: 2013-01-03 22:25
 template: article.jade
 ---
