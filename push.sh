@@ -5,7 +5,7 @@ if [ -n "$(cd . && git status -s)" ]; then
   exit 1
 fi
 
-wintersmith build
+wintersmith build --clean
 
 if [ -n "$(cd build && git status -s)" ]; then
   echo "There are uncommitted changes in ./build"
