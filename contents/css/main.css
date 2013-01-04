@@ -26,3 +26,12 @@ pre code {
   border: 0;
   background: transparent;
 }
+
+img {
+  margin: 0;
+  padding: 0;
+}
+
+#head-sep {
+  margin-bottom: 1.5em;
+}

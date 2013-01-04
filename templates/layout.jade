@@ -11,6 +11,20 @@ html(lang='en')
       link(rel='stylesheet', href='/css/960.css')
       link(rel='stylesheet', href='/css/fbg.css')
       link(rel='stylesheet', href='/css/main.css')
+      script(type='text/javascript', src='http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.js')
+      script(type='text/javascript', src='/js/galleria-1.2.8.min.js')
+      script
+        $(function() {
+          if ($(".gallery").length) {
+            Galleria.loadTheme('/js/galleria.classic.min.js');
+            Galleria.configure({
+              imageCrop: 'width',
+            });
+            $(".gallery").each(function(i,e) {
+              Galleria.run('#'+e.id);
+            });
+          }
+        });
   body
     .container_12
       header
@@ -20,7 +34,7 @@ html(lang='en')
           img(src='/images/adventures_in_the_world_of_the_raspberry_pi.png', style='float: right; margin-top: 161px;')
         .clear
         .grid_12
-          img(src='/images/sep.png')
+          img#head-sep(src='/images/sep.png')
         .clear
       div#content
         block content
