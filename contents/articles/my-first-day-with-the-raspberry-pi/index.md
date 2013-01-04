@@ -1,7 +1,9 @@
+---
 title: My first day with the Raspberry Pi
 author: clx
 date: 2013-01-03 22:25
 template: article.jade
+---
 
 At the end of 2012 - just a day or two before Christmas - I got my own Raspberry Pi from RS Components. 
 
