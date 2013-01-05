@@ -33,8 +33,30 @@ html(lang='en')
         .grid_7.suffix_1
           img(src='/images/adventures_in_the_world_of_the_raspberry_pi.png', style='float: right; margin-top: 161px;')
         .clear
-        .grid_12
+        .grid_12(style='position: relative')
           img#head-sep(src='/images/sep.png')
+          - var posts = _.chain(contents.articles._.directories).map(function(item) {
+          -   return item.index
+          - }).compact().sortBy(function(item) {
+          -   return -item.date
+          - }).value();
+          - var post_max = posts.length - 1;
+          - var post_index = 0;
+          - for (post_index = 0; post_index <= post_max; post_index++) {
+          -   if (posts[post_index].url == page.url) {
+          -     break;
+          -   }
+          - }
+          - var post_first_url = posts[post_max].url;
+          - var post_prev_url = post_index < post_max ? posts[post_index+1].url : '#';
+          - var post_next_url = post_index > 0 ? posts[post_index-1].url : '#';
+          - var post_last_url = posts[0].url;
+          #nav(style='position: absolute; right: 30px')
+            a(href='#{post_first_url}'): img(src='/images/nav-first.png', height='16')
+            a(href='#{post_prev_url}'): img(src='/images/nav-prev.png', height='16')
+            a(href='/archive.html'): img(src='/images/nav-list.png', height='16')
+            a(href='#{post_next_url}'): img(src='/images/nav-next.png', height='16')
+            a(href='#{post_last_url}'): img(src='/images/nav-last.png', height='16')
         .clear
       div#content
         block content
