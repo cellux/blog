@@ -62,7 +62,7 @@ mount -t ext4 -o loop,offset=$((122880*512)) 2012-12-16-wheezy-raspbian.img /tmp
 rsync -av /tmp/raspbian/ /mnt/shares/rpifs/
 ```
 
-This crazy `mount` (or rather `losetup`) trick allows you to mount a *part* of a disk image - like one of the partitions inside - via a loop device. To make it work, you have to find out where the desired partition starts (byte offset from start of image file) and pass that to mount via the `offset` option. You can find `fdisk` to find the right number:
+This crazy `mount` (or rather `losetup`) trick allows you to mount a *part* of a disk image - like one of the partitions inside - via a loop device. To make it work, you have to find out where the desired partition starts (byte offset from start of image file) and pass that to mount via the `offset` option. You can use `fdisk` to find the right number:
 
 ```bash
 [rb@pluto 2012-12-16-wheezy-raspbian]$ fdisk -l 2012-12-16-wheezy-raspbian.img 
