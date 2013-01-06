@@ -24,28 +24,29 @@ html(lang='en')
         .clear
         .grid_12(style='position: relative')
           img#head-sep(src='/images/sep.png')
-          - var posts = _.chain(contents.articles._.directories).map(function(item) {
-          -   return item.index
-          - }).compact().sortBy(function(item) {
-          -   return -item.date
-          - }).value();
-          - var post_max = posts.length - 1;
-          - var post_index = 0;
-          - for (post_index = 0; post_index <= post_max; post_index++) {
-          -   if (posts[post_index].url == page.url) {
-          -     break;
-          -   }
-          - }
-          - var post_first_url = posts[post_max].url;
-          - var post_prev_url = post_index < post_max ? posts[post_index+1].url : '#';
-          - var post_next_url = post_index > 0 ? posts[post_index-1].url : '#';
-          - var post_last_url = posts[0].url;
-          #nav(style='position: relative')
-            a(href='#{post_first_url}'): img(src='/images/nav-first.png', height='16', style='position: absolute; right: 150px')
-            a(href='#{post_prev_url}'): img(src='/images/nav-prev.png', height='16', style='position: absolute; right: 120px')
-            a(href='/archive.html'): img(src='/images/nav-list.png', height='16', style='position: absolute; right: 90px')
-            a(href='#{post_next_url}'): img(src='/images/nav-next.png', height='16', style='position: absolute; right: 60px')
-            a(href='#{post_last_url}'): img(src='/images/nav-last.png', height='16', style='position: absolute; right: 30px')
+          if page.template != "archive.jade"
+            - var posts = _.chain(contents.articles._.directories).map(function(item) {
+            -   return item.index
+            - }).compact().sortBy(function(item) {
+            -   return -item.date
+            - }).value();
+            - var post_max = posts.length - 1;
+            - var post_index = 0;
+            - for (post_index = 0; post_index <= post_max; post_index++) {
+            -   if (posts[post_index].url == page.url) {
+            -     break;
+            -   }
+            - }
+            - var post_first_url = posts[post_max].url;
+            - var post_prev_url = post_index < post_max ? posts[post_index+1].url : '#';
+            - var post_next_url = post_index > 0 ? posts[post_index-1].url : '#';
+            - var post_last_url = posts[0].url;
+            #nav(style='position: relative')
+              a(href='#{post_first_url}'): img(src='/images/nav-first.png', style='right: 150px')
+              a(href='#{post_prev_url}'): img(src='/images/nav-prev.png', style='right: 120px')
+              a(href='/archive.html'): img(src='/images/nav-list.png', style='right: 90px')
+              a(href='#{post_next_url}'): img(src='/images/nav-next.png', style='right: 60px')
+              a(href='#{post_last_url}'): img(src='/images/nav-last.png', style='right: 30px')
         .clear
       div#content
         block content

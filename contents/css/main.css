@@ -35,3 +35,12 @@ img {
 #head-sep {
   margin-bottom: 1.5em;
 }
+
+#nav {
+  position: relative;
+}
+
+#nav img {
+  height: 12px;
+  position: absolute;
+}
