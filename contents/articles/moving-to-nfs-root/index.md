@@ -79,6 +79,8 @@ Disk identifier: 0x00017b69
 
 ```
 
+(For some reason, this `fdisk` invocation doesn't provide the correct results on older distributions, like Ubuntu 10.04 Lucid Lynx. It does work on a recent Arch Linux, though. Perhaps a bug in `fdisk`?)
+
 As you can see, the FAT32 partition (`/boot`) comes first, starting at sector #8192, then comes the ext4 fs (`/`) at sector #122880. As each sector uses 512 bytes, we'll have to multiply the sector number by 512 to get the byte offset.
 
 The only thing left was telling the Pi Linux kernel that it should mount its root fs from the router over NFS, instead of locally from the SD card.
