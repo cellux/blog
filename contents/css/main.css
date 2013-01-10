@@ -38,9 +38,12 @@ img {
 
 #nav {
   position: relative;
+  width: 150px;
+  right: 15px;
 }
 
 #nav img {
+  width: 22px;
   height: 16px;
   position: absolute;
 }

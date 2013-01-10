@@ -13,12 +13,14 @@ $(function() {
             top: "-=4",
             left: "-=4",
             height: "+=8",
+            width: "+=8",
         }, 100, 'swing');
     }, function() {
         $(this).animate({
             top: "+=4",
             left: "+=4",
             height: "-=8",
+            width: "-=8",
         }, 100, 'swing');
     });
 });
