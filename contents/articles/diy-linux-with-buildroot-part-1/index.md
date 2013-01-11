@@ -9,19 +9,19 @@ In today's blog post I will explain how to build your own custom Linux system fo
 
 The ideal tool for such an endeavour would be an automated build system which took a set of requirements - the list of packages to include, kernel configuration, etc. - and created a self-contained root filesystem for the Pi, together with a freshly built kernel (`kernel.img`), boot loader, firmware (`bootcode.bin`, `start.elf`) and config files (`config.txt`, `cmdline.txt`) ready to be placed onto the `/boot` partition of the SD card.
 
-As it turns out, there *is* a system like that out there - it's called [Buildroot][] - and with a little bit of customization we can shape it into the build system we want.
+As it turns out, there *is* a system like that out there - it's called [Buildroot][] - and with a little bit of customization we can shape it exactly into the build system we want.
 
 [Buildroot]: http://buildroot.uclibc.org/
 
-Buildroot grew out from the [µClibc] (microcontroller libc) project, a reimplementation of the standard Unix C library specially targeted for embedded Linux systems. The µClibc people needed a tool which would automate the creation of such systems, and this need has driven the development of Buildroot.
+Buildroot grew out from the [µClibc] (microcontroller libc) project, a reimplementation of the standard Unix C library specially targeted for embedded Linux systems. The µClibc people needed a tool which would automate the creation of such systems and this need led them to the development of Buildroot.
 
 [µClibc]: http://uclibc.org/
 
 ##### Test drive
 
-As the best way to learn something is by doing it, I'll show you how to build a basic root filesystem with Buildroot.
+As the best way to learn something is by doing it, first I'll show you how to build a basic root filesystem.
 
-Download and extract the latest stable Buildroot release to a temporary directory:
+Download and extract the latest stable Buildroot to a local directory:
 
 ```bash
 mkdir -p $HOME/buildroot
@@ -30,7 +30,7 @@ wget http://buildroot.uclibc.org/downloads/buildroot-2012.11.1.tar.gz
 tar xvzf buildroot-2012.11.1.tar.gz
 ```
 
-The archive will be unpacked into a directory called `buildroot-2012.11.1`. Enter this directory (referred to as `$TOPDIR` later on):
+The archive will be unpacked into a directory called `buildroot-2012.11.1`. Enter this directory (referred to as `$TOPDIR` from now on):
 
 ```bash
 cd buildroot-2012.11.1
@@ -42,7 +42,7 @@ and invoke the following make target to configure the system:
 make menuconfig
 ```
 
-The configuration tool uses `kconfig`, so it will be quite familiar if you have ever configured a Linux kernel.
+The configuration tool uses `kconfig`, so you'll find it quite familiar if you have ever configured a Linux kernel.
 
 <p><img src="buildroot.png" width="100%"/></p>
 
@@ -86,7 +86,7 @@ These correspond to what we have on the Raspberry Pi.
 
 `Download dir` specifies the directory where Buildroot will download the sources of all packages we have selected for the build. In the default setup, this is a directory under `$TOPDIR`, but I preferred an external location to enable reuse and prevent accidental removal.
 
-Buildroot can use [ccache] for compilation of C/C++ source code; this means that object files built with a given command line (compiler configuration) are saved in a cache and are reused when the same object file shall be built again. This saves a lot of time with repeated builds (typical when tinkering) so I turned it on.
+Buildroot can use [ccache] for compilation of C/C++ source code; this means that object files built with a given command line (compiler configuration) are saved in a cache and are reused when the same object file is to be built again. This saves a lot of time with repeated builds (typical when tinkering) so I turned it on.
 
 [ccache]: http://ccache.samba.org/
 
@@ -103,7 +103,7 @@ Buildroot can use [ccache] for compilation of C/C++ source code; this means that
   </tr>
 </table>
 
-We'll use the latest `rpi-3.6.y` kernel branch from the [foundation's git repository][raspberrypi-linux] and here we select the matching kernel headers.
+We'll use the latest `rpi-3.6.y` kernel branch from the [foundation's git repository][raspberrypi-linux], so here we select matching kernel headers.
 
 [raspberrypi-linux]: https://github.com/raspberrypi/linux
 
@@ -122,7 +122,7 @@ We'll use the latest `rpi-3.6.y` kernel branch from the [foundation's git reposi
   </tr>
 </table>
 
-You may want to add others, I prefer to keep these pruned to the absolute minimum.
+You may want to add others - I prefer to keep these pruned to the absolute minimum.
 
 <table class="dl">
   <tr>
@@ -187,7 +187,7 @@ The system hostname and the banner can be anything you wish.
 
 `Dynamic using mdev` means that:
 
-1. we will use the kernel-provided `devtmpfs` filesystem for `/dev` - this pseudo fs is automatically populated when Linux detects new hardware
+1. Buildroot will mount the kernel-provided `devtmpfs` filesystem to `/dev` - this pseudo fs is automatically populated when Linux detects new hardware
 2. we'll be able to write hotplug scripts to handle device attach/disconnect events, which sounds nice
 
 The getty baudrate is 38400 because that's what I've seen in my `/etc/inittab`.
@@ -212,7 +212,7 @@ You may select other packages too, as you see fit.
   </tr>
 </table>
 
-We ask Buildroot to generate a `rootfs.tar.gz` as well (besides `rootfs.tar`).
+Here we ask Buildroot to generate a `rootfs.tar.gz` (besides `rootfs.tar`).
 
 ###### Kernel
 
@@ -267,7 +267,7 @@ Buildroot will go through the following steps:
 
 There are some minor issues which we'll have to deal with before we can use our freshly baked root fs on the Pi.
 
-As root, unpack `output/images/rootfs.tar.gz` to its destined place (most likely `/dev/mmcblk0p2` or your NFS root - we'll call this `$ROOTDIR` from here) and go through the following steps:
+As root, unpack `output/images/rootfs.tar.gz` to its destined place (most likely `/dev/mmcblk0p2` or your NFS root - we'll call this place `$ROOTDIR` from now on) and go through the following steps:
 
 ###### Set a root password
 
@@ -326,7 +326,7 @@ We also need a command line for our kernel, so put the following line into `$BOO
 dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 elevator=deadline rootwait root=/dev/mmcblk0p2 rootfstype=ext4
 ```
 
-This comes from Raspbian and you may vary it as you wish - here is my latest NFS root cmdline for example:
+This comes from Raspbian, you may vary it as you wish - here is my latest NFS root cmdline for example:
 
 ```
 dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 elevator=deadline rootwait ip=::::rpi::dhcp root=/dev/nfs nfsroot=192.168.1.1:/mnt/shares/rpifs/nfsroot,tcp,rsize=32768,wsize=32768
@@ -337,3 +337,7 @@ dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 e
 [nfsroot.txt]: https://www.kernel.org/doc/Documentation/filesystems/nfs/nfsroot.txt
 
 Now the system is ready: put the SD card into your Pi and hope for the best. :-) (But seriously, it should work.)
+
+[Continue to part 2][part2]
+
+[part2]: /articles/diy-linux-with-buildroot-part-2/

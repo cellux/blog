@@ -11,7 +11,7 @@ In the [first part] of this article, we built a minimal Linux system with Buildr
 
 ##### Automating post-build actions
 
-This is easy: just create a script somewhere which contains the commands to execute after a successful build, and let Buildroot know about it by setting the `BR2_ROOTFS_POST_BUILD_SCRIPT` config variable (under `System configuration` / `Custom script to run before creating filesystem images` in kconfig).
+This is easy: just create a script somewhere which contains the commands to execute after a successful build, then let Buildroot know about it by setting the `BR2_ROOTFS_POST_BUILD_SCRIPT` config variable (which can be found under `System configuration` / `Custom script to run before creating filesystem images` in kconfig).
 
 The location of this script can be specified relative to `$TOPDIR`, so it makes sense to store it somewhere in the Buildroot tree. My solution was to create a `board/rpi` directory for this purpose and symlink it to the actual content which is stored in a git repository:
 
@@ -24,7 +24,7 @@ cd buildroot-2012.11.1
 ln -s $HOME/repos/rpi-buildroot/board/rpi board/rpi
 ```
 
-This way I can easily add my personal customizations to a freshly unpacked Buildroot tree.
+This way I can easily add all my personal customizations to a freshly unpacked Buildroot tree.
 
 The script (`board/rpi/post-build.sh`) could look like this:
 
@@ -44,13 +44,13 @@ install -T -m 0644 $BR_ROOT/system/skeleton/etc/fstab $TARGETDIR/etc/fstab
 echo '/dev/mmcblk0p1 /boot vfat defaults 0 0' >> $TARGETDIR/etc/fstab
 ```
 
-(don't forget to chmod it to 755)
+(don't forget to chmod the script file to 755)
 
 As you see, Buildroot runs the script from `$TOPDIR` and passes the location of the target file system as the first argument.
 
-A small change compared to the previous article is the hard-coding of the crypted password to avoid a dependency on Perl.
+A small change compared to the previous article is the hard-coding of the crypted password, this was done to avoid the dependency on Perl.
 
-The `/etc/shadow` and `/etc/fstab` files are copied from a Buildroot-provided skeleton filesystem - that's what Buildroot uses as a base for the root fs - and then updated with our stuff. (If we left out the copy and ran `make` repeatedly, `$TARGETDIR/etc/fstab` would contain several entries for `/boot`.)
+The `/etc/shadow` and `/etc/fstab` files are copied from a Buildroot-provided skeleton filesystem and then updated with our stuff. If we left out the copy and ran `make` repeatedly, `$TARGETDIR/etc/fstab` would contain several entries for `/boot`.
 
 ##### Extending Buildroot with new packages
 
@@ -80,11 +80,11 @@ config BR2_PACKAGE_TCPDUMP_SMB
 	  enable possibly-buggy SMB printer
 ```
 
-Each `config` stanza defines one configuration variable. The first line of the stanza defines the type and label of the config entry. The `select` entry tells kconfig that selecting `tcpdump` would automatically enable the `libpcap` package as well, while `depends` declares that `smb dump support` can be selected only if `tcpdump` has been already selected (in practice this means that this entry won't be visible in the config until `tcpdump` has been selected).
+Each `config` stanza defines one configuration variable. The first line of the stanza defines the type and label of the config entry. The `select` entry tells kconfig that selecting `tcpdump` would automatically enable the `libpcap` package as well, while `depends` declares that `smb dump support` can be selected only if `tcpdump` has been already selected (in practice this means that this entry won't be visible until `tcpdump` has been selected).
 
-All lines belonging to the config stanzas must be indented with a single Tab, help lines must be also prefixed with two extra spaces.
+All lines below the config stanzas must be indented with a single tab. Help lines must have an extra prefix of two extra spaces (after the tab).
 
-When the `.config` file has been written and we execute `make`, Buildroot goes over all selected packages and executes the package-specific makefile located at `package/<package-name>/<package-name>.mk`.
+Upon executing `make`, Buildroot goes over the selected packages and for each one executes a package-specific makefile located at `package/<package-name>/<package-name>.mk`.
 
 Let's see how `tcpdump` gets built (`package/tcpdump/tcpdump.mk`):
 
@@ -119,21 +119,21 @@ $(eval $(autotools-package))
 
 Every makefile in Buildroot works in the same way: first it sets up a set of make variables to configure the build (their names are prefixed with the uppercase name of the package, hyphens converted to underscores), then invokes one or several macros (in this case, `autotools-package`) which carry out the actual build process.
 
-The system provides three major mechanisms for building packages:
+The system provides three major mechanisms/macros for building packages:
 
 1. `autotools-package` for autotools-based ones (`./configure && make && make install`)
 2. `cmake-package` for `cmake` projects
 3. `generic-package` for the rest
 
-A package gets built in several stages: first it's downloaded, then unpacked, patched, configured, built and finally installed (it can be also cleaned and uninstalled).
+A package gets built in several stages: first it's downloaded, then unpacked, patched, configured, built and finally installed (it can be also cleaned and uninstalled - if the package supports this).
 
 ###### Download
 
-To download a package called `pkg`, Buildroot tries to fetch it from `$(PKG_SITE)/$(PKG)-$(PKG_VERSION).tar.gz` (it can also fetch it from a version control system - SVN, Bazaar, Git, Mercurial are all supported -, `scp` it from somewhere or simply copy it from a directory on the local system). If we define a variable named `PKG_SOURCE`, then it will use that instead of `$(PKG)-$(PKG_VERSION).tar.gz`. The downloaded file will be stored in the download directory (`$(HOME)/buildroot/dl` in our case).
+To download a package called `pkg`, Buildroot tries to fetch it from `$(PKG_SITE)/$(PKG)-$(PKG_VERSION).tar.gz` (it can also clone it from a version control system - SVN, Bazaar, Git, Mercurial are all supported -, `scp` it from somewhere or simply copy it from a directory on the local system). If we define a variable named `PKG_SOURCE`, then Buildroot will use that instead of `$(PKG)-$(PKG_VERSION).tar.gz`. The downloaded file will be stored in the download directory (`$(HOME)/buildroot/dl` in our case).
 
 ###### Unpack
 
-The package gets unpacked into the `output/build/$(PKG)-$(PKG_VERSION)` directory.
+The downloaded package gets unpacked into `output/build/$(PKG)-$(PKG_VERSION)`.
 
 ###### Patch
 
@@ -141,13 +141,13 @@ If there are any files called `$(PKG)-*.patch` in the `package/$(PKG)` directory
 
 ###### Configure
 
-In the case of autotools-based packages, this step invokes the `./configure` script with parameters given by `$(PKG)_CONF_OPT`, in an environment extended with the variables in `$(PKG)_CONF_ENV`.
+In the case of autotools-based packages, this step invokes the `./configure` script with parameters given by `$(PKG)_CONF_OPT` and an environment extended with the variables in `$(PKG)_CONF_ENV`.
 
 In the case of generic packages, we must define a variable called `$(PKG)_CONFIGURE_CMDS` and Buildroot will invoke that:
 
 ```
 define PKG_CONFIGURE_CMDS
-       # do what is required here to configure the package
+       # do what is required here to configure package `pkg'
 endef
 ```
 
@@ -155,7 +155,7 @@ endef
 
 In case of autotools-based packages, this step executes `make`.
 
-For generic packages, we must define `$(PKG)_BUILD_CMDS`.
+For generic packages, we must define the build steps in `$(PKG)_BUILD_CMDS`.
 
 ###### Install
 
@@ -172,19 +172,19 @@ The `staging` directory is used to install dependencies of other packages. For i
 
 The `images` directory is the target for the Linux kernel and the final root fs. Not many packages use this kind of install.
 
-The `target` directory is the base for the final root fs: each package which wants to have files in the root fs must install something to here.
+The `target` directory serves as a base for the final root fs: each package which wants to have files in the root fs must install something here.
 
-For generic packages, the corresponding make variables are `$(PKG)_INSTALL_CMDS`, `$(PKG)_INSTALL_STAGING_CMDS`, `$(PKG)_INSTALL_IMAGES_CMDS` and `$(PKG)_INSTALL_TARGET_CMDS`, respectively.
+For generic packages, the corresponding make variables prescribing the install steps are `$(PKG)_INSTALL_CMDS`, `$(PKG)_INSTALL_STAGING_CMDS`, `$(PKG)_INSTALL_IMAGES_CMDS` and `$(PKG)_INSTALL_TARGET_CMDS`, respectively.
 
 ##### Creating a package for RPi firmware
 
 In the previous article, we copied the firmware files (`bootcode.bin`, `start.elf` and `fixup.dat`), the Linux kernel and `cmdline.txt` to the `/boot` partition of the SD card by hand.
 
-It would be nice to modify Buildroot in such a way that at the end of the build process we get a `bootfs.tar.gz` file under `output/images`, which just has to be extracted to the `/boot` partition.
+It would be nice to modify Buildroot in such a way that when the build process is over, we get a `bootfs.tar.gz` file under `output/images` which we can extract to the `/boot` partition.
 
-To achieve this goal, we'll create a new package under `package/rpi/rpi-firmware` to take care of this.
+We'll create a new package under `package/rpi/rpi-firmware` to take care of this.
 
-The new package's `Config.in` file looks like this (watch out for tab characters if you copy/paste this):
+The new package's `Config.in` file looks like this (watch out for tab characters if you copy/paste):
 
 ```
 config BR2_PACKAGE_RPI_FIRMWARE
@@ -228,7 +228,9 @@ endef
 $(eval $(generic-package))
 ```
 
-We take advantage of the fact that a given commit on Github can be downloaded in .tar.gz format from the `https://github.com/<user>/<repo>/archive/<sha1>.tar.gz` URL.
+`$(@D)` is the build directory of the package (`output/build/rpi-firmware-ffbb918fd46f1b0b687a474857b370f24f71989d` in this case).
+
+We take advantage of the fact that a given commit on GitHub can be downloaded in .tar.gz format from the `https://github.com/<user>/<repo>/archive/<sha1>.tar.gz` URL.
 
 `RPI_FIRMWARE_INSTALL_STAGING = YES` declares that this package wants to install something to `output/staging` so the build process will execute the commands in `RPI_FIRMWARE_INSTALL_STAGING_CMDS`.
 
@@ -258,7 +260,7 @@ The corresponding makefile (`package/rpi/rpi.mk`):
 include package/rpi/*/*.mk
 ```
 
-This just pulls in all the package-specific makefiles it finds in the `package/rpi/*` directories.
+This just pulls in all the package-specific makefiles it finds under the `package/rpi/*` directories.
 
 The last thing we must do is to package up the contents of the staging `/boot` folder to `output/images/bootfs.tar.gz`. Let's do this with an images install:
 
@@ -283,6 +285,27 @@ That's all.
 
 ##### Creating a package for RPi userland
 
+The RPi userland consists of the following libraries:
+
+* libbcm_host.so
+* libEGL.so
+* libGLESv2.so
+* libmmal.so
+* libmmal_vc_client.so
+* libopenmaxil.so
+* libOpenVG.so
+* libvchiq_arm.so
+* libvcos.so
+* libWFC.so
+
+These will become important when we want to experiment with the facilities provided by the Broadcom VideoCore GPU from our programs.
+
+Fortunately, the complete source code of these libraries is [available][raspberrypi-userland] on GitHub and the package uses `cmake` as its build system which means it's a snap to integrate it into Buildroot.
+
+[raspberrypi-userland]: https://github.com/raspberrypi/userland
+
+Here are all the files required for our new package `rpi-userland`:
+
 `package/rpi/rpi-userland/Config.in`:
 
 ```
@@ -294,7 +317,7 @@ config BR2_PACKAGE_RPI_USERLAND
 	  https://github.com/raspberrypi/userland/
 ```
 
-Don't forget to source it from `package/rpi/Config.in`.
+(Don't forget to reference it from `package/rpi/Config.in`.)
 
 `package/rpi/rpi-userland/rpi-userland.mk`:
 
@@ -317,9 +340,7 @@ endef
 $(eval $(cmake-package))
 ```
 
-`$(@D)` is the build directory of the package (`output/build/rpi-userland-9852ce28826889e50c4d6786b942f51bccccac54` in this case).
-
-First I used `master` as the value of `RPI_USERLAND_VERSION`, but this led to clashes between packages in the download directory (each package wanted to download its archive to `master.tar.gz`), so I switched to SHA-1 hashes instead.
+First I used `master` as the value of `RPI_USERLAND_VERSION`, but this led to name clashes between packages in the download directory (several packages wanted to download their archive to `master.tar.gz`), so I switched to SHA-1 hashes instead.
 
 One last thing before we can build this: the `interface/vcos/glibc/vcos_backtrace.c` file must be patched because it refers to a C function (`backtrace`) which is not available in µClibc:
 
@@ -358,6 +379,8 @@ One last thing before we can build this: the `interface/vcos/glibc/vcos_backtrac
  }
 ```
 
-And if you don't want to fiddle with the files, just use my Git repository: https://github.com/cellux/rpi-buildroot
+(If you don't want to fiddle with copy/pasting these files, just fetch them from my Git repository at https://github.com/cellux/rpi-buildroot)
+
+Now execute `make menuconfig`, enable the new package(s), `make` the whole thing and unpack the resulting `bootfs.tar.gz` and `rootfs.tar.gz` (as root) to the correct places.
 
 Happy hacking!
