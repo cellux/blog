@@ -8,3 +8,7 @@ preview:
 
 push:
 	sh push.sh
+
+pull:
+	sh pull.sh
+
