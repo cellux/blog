@@ -48,15 +48,20 @@ img {
   position: absolute;
 }
 
-.dl-table {
+table.dl {
   width: 100%;
 }
 
-.dl-table th {
+table.dl th {
   font-family: Menlo, Consolas, 'DejaVu Sans Mono', Monaco, monospace;
   font-weight: normal;
   font-size: 12px;
   line-height: 1.7142857142857142857142857142857em;
   width: 50%;
   vertical-align: top;
+}
+
+ol li { 
+  text-indent: -1.2em;
+  padding-left: 1.2em;
 }
