@@ -42,12 +42,13 @@ html(lang='en')
             - var post_prev_url = post_index < post_max ? posts[post_index+1].url : '#';
             - var post_next_url = post_index > 0 ? posts[post_index-1].url : '#';
             - var post_last_url = posts[0].url;
-            #nav(style='float:right;')
-              a(href='#{post_first_url}'): img(src='/images/nav-first.png', style='left: 0px')
-              a(href='#{post_prev_url}'): img(src='/images/nav-prev.png', style='left: 25px')
-              a(href='/archive.html'): img(src='/images/nav-list.png', style='left: 50px')
-              a(href='#{post_next_url}'): img(src='/images/nav-next.png', style='left: 75px')
-              a(href='#{post_last_url}'): img(src='/images/nav-last.png', style='left: 100px')
+            - var nav_visible = [ post_index == post_max ? 'hidden' : 'visible', post_index == post_max ? 'hidden' : 'visible', 'visible', post_index == 0 ? 'hidden' : 'visible', post_index == 0 ? 'hidden' : 'visible' ];
+            #nav(style='float:right')
+              a(href='#{post_first_url}', title='First post'): img(src='/images/nav-first.png', style='left: 0px; visibility: #{nav_visible[0]};')
+              a(href='#{post_prev_url}', title='Previous post'): img(src='/images/nav-prev.png', style='left: 25px; visibility: #{nav_visible[1]};')
+              a(href='/archive.html', title='List of articles'): img(src='/images/nav-list.png', style='left: 50px; visibility: #{nav_visible[2]};')
+              a(href='#{post_next_url}', title='Next post'): img(src='/images/nav-next.png', style='left: 75px; visibility: #{nav_visible[3]};')
+              a(href='#{post_last_url}', title='Last post'): img(src='/images/nav-last.png', style='left: 100px; visibility: #{nav_visible[4]};')
         .clear
       div#content
         block content
