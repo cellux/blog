@@ -147,6 +147,10 @@ We need these for `hardfp`. Essential stuff.
     <td>`YES`</td>
   </tr>
   <tr>
+    <th>Enable RPC support</th>
+    <td>`YES`</td>
+  </tr>
+  <tr>
     <th>Enable WCHAR support</th>
     <td>`YES`</td>
   </tr>
@@ -156,7 +160,7 @@ We need these for `hardfp`. Essential stuff.
   </tr>
 </table>
 
-These seemed like a good idea (and without them, certain packages cannot be selected).
+These seemed like a good idea (and without them, certain packages cannot be selected). RPC is needed only if you want to mount NFS filesystems to the Pi.
 
 ###### System configuration
 
@@ -201,7 +205,10 @@ This is the section where you specify which packages get in and which will be le
 [Busybox]: http://www.busybox.net/
 [dropbear]: https://matt.ucc.asn.au/dropbear/dropbear.html
 
+Also, if you want to mount NFS filesystems, you should enable `Networking applications` / `Portmap`.
+
 You may select other packages too, as you see fit.
+
 
 ###### Filesystem images
 
