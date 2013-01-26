@@ -330,7 +330,7 @@ for <var1>,<var2>,... in <iterator> do
 end
 ```
 
-On each pass of the loop, `<iterator>` returns an arbitrary number of values which get assigned to the `<var1>`, `<var2>`, ... local variables visible inside `<block>`.
+On each pass of the loop, `<iterator>` returns a fixed number of values which get assigned to the `<var1>`, `<var2>`, ... local variables visible inside `<block>`.
 
 A common use case is iteration over the key-value pairs of a table:
 
@@ -356,7 +356,7 @@ function table_size(t)
 end
 ```
 
-As you see, you don't have to take every value provided by the iterator: here we only take the key. (This is generally true: if you call a function which returns N values but you assign less than N variables on the calling side, the rest of the values are silently dropped.)
+As you see, you don't have to take every value provided by the iterator: here we only take the key. (This is generally true: if you call a function which returns N values but you assign less than N variables on the calling side, the rest of the values are silently dropped. On the contrary, if you assign more values than returned from the function, the remaining variables will be `nil`.)
 
 ```Lua
 function table_foreach(t,fun)
@@ -391,18 +391,18 @@ the temperature on day #4 was 34 degrees
 the temperature on day #5 was 38 degrees
 ```
 
-Now let's build a function which takes a table `t` and a function `f`, then finds the first value `v` in table `t` for which `f(v)` returns a logically true value (neither `nil` nor `false`):
+Now let's build a function which takes a table `t` and a function `pred`, then finds the first value `v` in table `t` for which `pred(v)` returns a logically true value (neither `nil` nor `false`):
 
 ```Lua
-function table_find_if(t,f)
+function table_find_if(t,pred)
    for k,v in pairs(t) do
-      if f(v) then return k,v end
+      if pred(v) then return k,v end
    end
    return nil
 end
 ```
 
-If a table has both integer and non-integer keys, `pairs` first iterates over the integer indices (in ascending order) and then over the rest (in unspecified order).
+If a table has both integer and non-integer keys, `pairs` first iterates over the elements with the integer indices (in ascending key order) and then over the rest (in unspecified order).
 
 ```Lua
 function table_find_if_exceeds(t,limit)
@@ -626,11 +626,16 @@ end
 assert(path_join('/', '/usr', 'bin', 'luajit') == '/usr/bin/luajit')
 ```
 
-The major new element here is `...` - the *vararg expression* - which is used to collect all of the arguments following `sep`.
+The major new element introduced here is `...` - the *vararg expression* - which is used to collect the arguments following `sep`. This is a special construct with only a small number of operations:
+
+1. you can use it inside a table constructor (if used in the middle, it expands to the first item, if used as the last value, it expands to all items)
+2. you can use it on the right side of a multiple assignment (with the same rules)
+3. you can return it from a function (it gets unpacked to multiple return values)
+4. you can pass it to another function (if passed as the last argument, the callee gets the contained items as extra arguments, if passed as a middle arg, the callee gets the first item)
 
 The `local parts = {...}` line places the extra arguments into a local table for easy access.
 
-`ipairs(t)` produces `(1,t[1])`, `(2,t[2])`, `(3,t[3])`, ... pairs until the first integer index which doesn't exist in the table. A possible Lua implementation:
+The `ipairs(t)` function creates an iterator which returns a series of `(1,t[1])`, `(2,t[2])`, `(3,t[3])`, ... pairs when used in a `for..in` loop. Obviously, this function was invented for integer-indexed arrays. A possible Lua implementation:
 
 ```Lua
 function ipairs(t)
@@ -647,7 +652,13 @@ function ipairs(t)
 end
 ```
 
-###### repeat <block> until <exp>
+The `s:sub(start[,end])` method returns a substring of `s` starting at (1-based) index `start` and ending at `end` (inclusive). If `end` is not supplied, it defaults to `#s`. Both `start` and `end` may be negative, in which case they count from the end of the string (`-1` corresponds to the last character).
+
+Comments begin with `--` and extend to the end of line.
+
+`table.concat(t,sep)` joins the elements of `t` into a string, with the elements separated by `sep`.
+
+###### Repeat..until
 
 ```Lua
 function fs.readfile(path)
@@ -668,19 +679,11 @@ function fs.readfile(path)
 end
 ```
 
-###### for <var_1>, ..., <var_n> in <explist> do <block> end
+This should be trivial to understand by now. The loop exits when the expression following `until` becomes logically true.
 
+As you see, the local variable `len` - defined inside the repeat..until block - can be also accessed in the expression after `until`. In other words, the scope of the repeat..until block extends to the expression after `until`.
 
-###### ...
-
-```Lua
-function table_pack(...)
-   local n = select('#',...)
-   return {n=n; ...}
-end
-```
-
-###### metatables
+###### Metatables
 
 ```Lua
 local List = {}
@@ -851,7 +854,7 @@ assert(ls:equals {10,8,3,6,1})
 assert(clone:equals {20,8,3,6,1})
 ```
 
-###### coroutines
+###### Coroutines
 
 ```Lua
 local function _dirfiles(dir)
