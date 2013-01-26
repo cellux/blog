@@ -1,0 +1,931 @@
+---
+title: Introduction to LuaJIT [1/2]
+author: cellux
+date: 2013-01-19 20:38
+template: article.jade
+---
+
+Now that we have [our own Linux system][prev] to work on, we can start writing programs for the Pi.
+
+[prev]: /articles/diy-linux-with-buildroot-part-1/
+
+After much investigation, I decided that I'll write these programs in [Lua][] - more exactly [LuaJIT][], a highly optimized implementation of the original Lua 5.1 VM developed by a single person, Mike Pall, who - based on his work - seems to be nothing short of a genius. This guy implemented a just-in-time compiler for Lua which can compile Lua bytecode straight into optimized machine code on the x86/x64, PPC, MIPS *and ARM* architectures. Furthermore, he added an excellent foreign function interface which makes it a breeze to interface Lua code with C libraries.
+
+[Lua]: http://www.lua.org/
+[LuaJIT]: http://www.luajit.org/
+
+As LuaJIT is already included in the Buildroot distribution, it takes just the flip of a switch to install it into our root fs. There is one catch though: Buildroot 2012.11.1 contains a late beta version of LuaJIT, not the final 2.0.0. If you want the final version, you should clone the [Buildroot GitHub repository] and replace the `buildroot-2012.11.1/package/luajit` folder with the version from the master branch before running `make`.
+
+[Buildroot GitHub repository]: git://git.buildroot.net/buildroot
+
+The LuaJIT package installs the following files to the root fs:
+
+```
+/usr/bin/luajit
+/usr/lib/libluajit-5.1.so
+/usr/share/luajit-2.0.0/jit/bc.lua
+/usr/share/luajit-2.0.0/jit/bcsave.lua
+/usr/share/luajit-2.0.0/jit/dis_arm.lua
+/usr/share/luajit-2.0.0/jit/dis_mipsel.lua
+/usr/share/luajit-2.0.0/jit/dis_mips.lua
+/usr/share/luajit-2.0.0/jit/dis_ppc.lua
+/usr/share/luajit-2.0.0/jit/dis_x64.lua
+/usr/share/luajit-2.0.0/jit/dis_x86.lua
+/usr/share/luajit-2.0.0/jit/dump.lua
+/usr/share/luajit-2.0.0/jit/v.lua
+/usr/share/luajit-2.0.0/jit/vmdef.lua
+```
+
+From these, `libluajit-5.1.so` plays the central role: this ~500kb library contains the complete Lua interpreter, compiler, standard library and foreign function interface. If we had the necessary header files, we could use this library from C like this:
+
+```C
+#include <stdio.h>
+#include <luajit-2.0/lua.h>
+#include <luajit-2.0/lauxlib.h>
+
+int main (int argc, char **argv) {
+  if (argc > 1) {
+    lua_State *L = luaL_newstate();
+    luaL_openlibs(L);
+    luaL_dostring(L, argv[1]);
+    lua_close(L);
+  }
+  else {
+    fprintf(stderr, "Usage: %s [lua-code]\n", argv[0]);
+  }
+}
+```
+
+`luaL_newstate` creates a new Lua VM instance, `luaL_openlibs` makes the standard library available to code running in this VM, `luaL_dostring` compiles the program given in its second parameter (a C string) to Lua bytecode - probably machine code in the case of LuaJIT! - and then executes it. `lua_close` destroys the VM instance and takes care of cleanup.
+
+Variables defined in Lua may be accessed from C through an easy-to-use API. The programmer can also make C functions and data structures available in Lua. A frequently used pattern is to separate the codebase into two parts: a C/C++ part provides a set of lower-level components (like objects of a 3D engine), while the Lua part glues these components together into the desired app. The application's startup code may look like this:
+
+1. Load and initialize all lower-level C/C++ components, bind them into the Lua VM
+2. Load and execute a `main()` function implemented in Lua
+
+In sophisticated systems, the Lua side may open a network socket and listen for connections from the developer. Through this socket the programmer can send in Lua code which is instantly compiled and executed in the context of the running app. Functions of the app thus may be replaced in real-time - while the app is running - which provides a great environment for experimentation.
+
+The `/usr/bin/luajit` binary is a simple C frontend to `libluajit-5.1.so`: it provides a REPL (read-eval-print loop) and can also run a Lua script file if we pass one as an argument.
+
+The files under `/usr/share/luajit-2.0.0/jit` are part of LuaJIT's `jit` library, which provides a Lua API to the JIT compiler. Through this lib we can control the JIT, disassemble Lua bytecode (and the machine code generated from it) or get a human-readable dump of the code in its various stages as it progresses through the JIT compiler.
+
+##### A tour of the language
+
+In the rest of this article I will attempt to give a concise introduction to Lua. For further details - and a description of the C API which I won't discuss here -, I highly recommend reading the [Lua 5.1 manual][] which is a work of art in itself - on par with the [R5RS standard][] if you know what I mean.
+
+[Lua 5.1 manual]: http://www.lua.org/manual/5.1/manual.html
+[R5RS standard]: http://schemers.org/Documents/Standards/R5RS/
+
+Lua is a "polyglot" language: you can write Lua programs in procedural, object oriented or functional style - most likely mixing and matching these approaches as you go. It has all the usual control structures: *if..then..elseif..end*, *while..do..end*, *repeat..until* and two variants of the *for* loop. It has *booleans* - `true` and `false`, *numbers* - which correspond to C doubles, *strings* - 8-bit clean, counted byte arrays and *tables* - used to implement arrays, maps, records, trees, objects and modules. There is also the special value *nil* - a singleton value serving the same role as *None* in Python or *NULL* in Java (meaning "no value").
+
+*Functions* in Lua are first-class values: they can be created with literals, stored in variables and passed to functions as arguments. *Threads* (aka coroutines) allow several independent threads of execution inside a single Lua VM. These are not OS-level threads: there is no built-in scheduler to pre-empt them, so they must voluntarily give up control once in a while using the `coroutine.yield()` function. (The same model was used in [Windows 3.1][] to implement multitasking.)
+
+[Windows 3.1]: http://en.wikipedia.org/wiki/Scheduling_%28computing%29#Windows
+
+The last two types - *userdata* and *lightuserdata* - are used to represent C data structures and plain pointers on the Lua side.
+
+Lua has the four standard arithmetic operators (`+`, `-`, `*`, `/`), a modulo operator (`%`), exponentiation (`^`) and a prefix "length-of" operator (`#`). Comparison can be done using `==`, `<`, `>`, `<=` and `>=`. The "not-equal" operator is `~=` (not !=). Booleans and numbers are compared by value. Tables, functions, threads and userdata are considered equal if they reference the same object on the Lua heap. Strings are special: they are interned in a string table (a hash map) which [guarantees][luaS_newlstr] that any given string encountered during execution of the code gets stored in memory only once. This means that after
+
+[luaS_newlstr]: http://www.lua.org/source/5.1/lstring.c.html#luaS_newlstr
+
+```Lua
+a = "hello, world"
+b = "hello, world"
+```
+
+both `a` and `b` reference the same string value. Comparison of two strings thus boils down to a [simple pointer comparison][luaV_equalval]. As a result, we can use strings for the same purpose we would use enums in C or C++ without causing speed loss or significant memory bloat.
+
+[luaV_equalval]: http://www.lua.org/source/5.1/lvm.c.html#luaV_equalval
+
+In the following sections I will illustrate various areas and idioms of the language using small code snippets which I have mostly taken from Steve Donovan's [Penlight][], a comprehensive library of Lua utility functions. The code has been simplified a bit: I removed error handling and any extra features which would decrease the clarity - and therefore education value - of the examples.
+
+[Penlight]: http://github.com/stevedonovan/Penlight/
+
+Let's start with a simple function which converts its single numeric argument to a string, with thousands separated by commas (`12345678` => `"12,345,678"`):
+
+```Lua
+function comma(val)
+   local thou = math.floor(val/1000)
+   if thou > 0 then return comma(thou)..','..string.format('%03d', val % 1000)
+   else return tostring(val) end
+end
+```
+
+The first line of the function declares the local variable `thou`. Local variables can be only accessed inside the lexical scope that defined them - in this case the body of the function. We initialize `thou` with the value of `math.floor(val/1000)`, using the `floor` function from the built-in `math` module. If `math.floor(val/1000)` is positive, then the original `val` was greater than 1000, therefore we'll need a comma before the last three digits. Here the function goes recursive: it calls itself to return a properly comma-separated string representation of `math.floor(val/1000)`, then concatenates a comma and the last three digits to the result (`..` is the string concatenation operator, `%` is modulo, `string.format` works like `printf` in C). If the `val` we got was less than 1000, then we just return `val` converted to a string.
+
+(Note: the `tostring` function has its brother `tonumber` which can be used to convert a string to a number.)
+
+Let's see a slightly more complicated example, a function which expands tab characters to spaces in a string:
+
+```Lua
+function expand_tabs(s,n)
+   n = n or 8
+   return s:gsub('([^\t]*)\t',
+                 function(s)
+                    return s..(' '):rep(n - #s % n)
+                 end)
+end
+```
+
+The first argument of expand_tabs (`s`) is the string with the tabs in it, the second arg (`n`) specifies the width of one tab in character units.
+
+The `n = n or 8` idiom takes advantage of the short-circuiting nature of Lua's `or` operator: if the value of `n` is logically true - which in Lua means it is neither `nil` nor `false` - then the value of `n` stays as it is, otherwise it's replaced by eight. This idiom is widely used to assign default values to function arguments.
+
+The `s:gsub()` invocation calls a *method* on string object `s` - the exact meaning of this will be revealed later. The `gsub` method searches the string for the pattern given in the first argument (`([^\t]*)\t`), calls the function passed as the second arg for every match it finds and substitutes the match with the function's result. If the search pattern contains parenthesized subpatterns (captures), then the function is called with a list of these (as separate arguments), otherwise the entire match gets passed (in a single argument).
+
+This particular `gsub` invocation looks for groups of non-tab characters followed by a single tab, and replaces every match with the group of non-tab characters (unchanged) plus the right amount of spaces for the last tab. As `#s` returns the length of the string (the group of non-tab chars), `n - #s % n` gives the number of spaces which must be appended to make up for a single tab.
+
+The `(' '):rep()` call invokes the `rep(n)` string method which returns the string repeated `n` times.
+
+Strings in Lua may contain the following embedded escape sequences:
+
+```Lua
+\a bell
+\b backspace
+\f form feed
+\n newline
+\r carriage return
+\t horizontal tab
+\v vertical tab
+\\ backslash
+\" quotation mark [double quote]
+\' apostrophe [single quote]
+```
+
+It doesn't matter if a string is enclosed in single (`'`) or double (`"`) quotes, the semantics are the same.
+
+If you want to include a character with any byte value (between 0-255), use `\nnn` where `nnn` is the byte value in decimal:
+
+```Lua
+assert("\a\b\f\n\r\t\v\\\"\'" == "\007\008\012\010\013\009\011\092\034\039")
+```
+
+Embedded zeroes are ok.
+
+(`assert` checks that its argument evaluates to true and throws an error if it doesn't.)
+
+###### Logical operators
+
+Lua has three logical operators: `or`, `and` and `not`.
+
+Their precedence order: `not` > `and` > `or`.
+
+Both `and` and `or` have short-circuiting behavior.
+
+The following examples illustrate their use:
+
+```Lua
+so_ext = os == "Windows" and 'dll' or 'so'
+```
+
+This example checks whether `os` contains the string `"Windows"`, if it does, the value of `so_ext` will be `'dll'`, otherwise, it will be `'so'`. The `'so'` part will be evaluated only if the `os == "Windows" and 'dll'` part evaluates to false - which is only possible if `os` was not `"Windows"`.
+
+```Lua
+year = Y + (Y < 35 and 2000 or 1900)
+```
+
+This line might be familiar to any maintenance programmer who spent the last years of the twentieth century removing Y2K bugs.
+
+```Lua
+step = finish > start and 1 or -1
+```
+
+A way to decide whether we should increment or decrement our index variable in the upcoming loop if we want to get from `start` to `finish`.
+
+```Lua
+if not year and not month and not day then
+   error "at least the year, the month or the day must be specified"
+end
+```
+
+`error` is the way to signal an error in Lua. This is similar to *throw* in other languages. The error that is thrown (which may be any object, not just a string) can be caught using `pcall` (protected call):
+
+```Lua
+function main(arg1,arg2,arg3)
+  if arg1 > 5 then
+    error("no")
+  else
+    return arg3,arg2,arg1
+  end
+end
+
+status,res1,res2,res3 = pcall(main,1,2,3)
+assert(status==true)
+assert(res1==3)
+assert(res2==2)
+assert(res3==1)
+
+status,res1,res2,res3 = pcall(main,9,8,7)
+assert(status==false)
+assert(type(res1)=="string")
+assert(res2==nil)
+assert(res3==nil)
+```
+
+If the protected function (`main` in this case) didn't call `error` anywhere in its call graph, `pcall` returns with a `true` status plus the values returned by the function. (Here you can see how functions can return multiple values in Lua.)
+
+In the other case, `pcall` returns `false` and the error message (or object) which was thrown. As there are only two results, `res2` and `res3` are set to `nil`.
+
+The `type` function returns the type of its argument as a string.
+
+You may wonder why I used parentheses around `error`'s argument in one case, and no parentheses in the other: in Lua, you are free to leave out the parentheses if you call a function with a single argument which is either a *string* or a *table constructor*.
+
+###### Tables
+
+Tables are associative arrays mapping unique keys to values. Both keys and values may be of an arbitrary type (but not `nil`).
+
+Tables are created with a table constructor:
+
+```Lua
+months = {jan=1,feb=2,mar=3,apr=4,may=5,jun=6,jul=7,aug=8,sep=9,oct=10,nov=11,dec=12}
+```
+
+This table can be used to map abbreviated month names to month numbers:
+
+```Lua
+assert(months["jan"]==1)
+assert(months["oct"]==10)
+```
+
+For strings keys which are valid Lua identifiers - meaning a string of letters, digits, and underscores not beginning with a digit - the following notation is also accepted:
+
+```Lua
+assert(months.jan==1)
+assert(months.oct==10)
+```
+
+Here is a function which converts accented characters in a string to their non-accented counterparts:
+
+```Lua
+local accent_maps = {
+   hu = {
+     ['á'] = 'a',
+     ['é'] = 'e',
+     ['í'] = 'i',
+     ['ó'] = 'o',
+     ['ú'] = 'u',
+     ['ö'] = 'o',
+     ['ü'] = 'u',
+     ['ő'] = 'o',
+     ['ű'] = 'u',
+   },
+}
+
+function remove_accents(s,lang)
+   for from,to in pairs(accent_maps[lang]) do
+      s = s:gsub(from,to)
+   end
+   return s
+end
+
+assert(remove_accents("árvíztűrő tükörfúrógép",'hu')=="arvizturo tukorfurogep")
+```
+
+The function is not particularly efficient, but it works. It uses a `for..in` loop to iterate over the key-value pairs of a particular accent map (identified by `accent_maps[lang]`) and substitutes one kind of accented character on each iteration of the loop. The code assumes that the strings we process and the string literals in the code are encoded with the same character encoding. Lua doesn't know anything about accented characters: the keys in the `accent_maps.hu` table are seen as simple byte strings.
+
+As you probably noticed from the code, the list of items in a table constructor may end with a single comma - this feature helps us avoid a common error we get in other, more strict languages when we try to add new elements to a table - or change the order of elements - but forget to take care of the separating commas.
+
+The `gsub` method is used in a slightly different manner than previously: if its second arg is a string, `gsub` uses that directly as the replacement value.
+
+###### Arrays
+
+In Lua, traditional arrays (with integer indices) are also implemented with tables:
+
+```Lua
+arr = { 1,5,10,20 }
+```
+
+This table constructor is short-hand for the following, more verbose one:
+
+```Lua
+arr = { [1]=1,[2]=5,[3]=10,[4]=20 }
+```
+
+In other words, if we list a value without a key, it gets an auto-incremented index starting from 1:
+
+```Lua
+arr = { 1,2,fire="water","leaves",[1]=8,nil,function() return 42 end }
+assert(arr[1]==8)
+assert(arr[2]==2)
+assert(arr.fire=="water")
+assert(arr[3]=="leaves")
+assert(arr[4]==nil)
+assert(type(arr[5])=="function")
+assert(arr[5]()==42)
+```
+
+As the example shows, an element which belongs to an already assigned index (`1`) may be later overwritten by explicit specification of the same integer key (`[1]=8`).
+
+Internally, table elements indexed by integers are kept separately (in an *array part*) from elements indexed by other types (*hash part*). This ensures optimal efficiency for both use cases.
+
+###### Control structures: the for..in loop
+
+The `for..in` loop can be used to iterate over a series of values provided by an *iterator* (the full meaning of this will be explained later).
+
+It's typically used like this:
+
+```Lua
+for <var1>,<var2>,... in <iterator> do
+  <block>
+end
+```
+
+On each pass of the loop, `<iterator>` returns an arbitrary number of values which get assigned to the `<var1>`, `<var2>`, ... local variables visible inside `<block>`.
+
+A common use case is iteration over the key-value pairs of a table:
+
+```Lua
+function table_copy(t)
+   local res = {}
+   for k,v in pairs(t) do
+      res[k] = v
+   end
+   return res
+end
+```
+
+The iterator created by `pairs(t)` returns two values on each iteration: the key and value of the current element of `t`.
+
+Here is a function to count the number of elements in table `t`:
+
+```Lua
+function table_size(t)
+   local i = 0
+   for k in pairs(t) do i = i + 1 end
+   return i
+end
+```
+
+As you see, you don't have to take every value provided by the iterator: here we only take the key. (This is generally true: if you call a function which returns N values but you assign less than N variables on the calling side, the rest of the values are silently dropped.)
+
+```Lua
+function table_foreach(t,fun)
+   for k,v in pairs(t) do
+      fun(k,v)
+   end
+end
+```
+
+Here we take the function `fun` and apply it to each key-value pair in the table.
+
+Let's see how we could write a function which gets an array of daily maximum temperatures, a limit, and prints the first day when the daily temperature exceeded the limit.
+
+First we define a table with the temperatures and print it out using the `table_foreach` we defined previously:
+
+```Lua
+daily_max_temperatures = {30, 35, 32, 34, 38};
+
+table_foreach(daily_max_temperatures,
+  function(day,temp)
+    print(string.format("the temperature on day #%d was %d degrees", day, temp))
+  end)
+```
+
+The result:
+
+```
+the temperature on day #1 was 30 degrees
+the temperature on day #2 was 35 degrees
+the temperature on day #3 was 32 degrees
+the temperature on day #4 was 34 degrees
+the temperature on day #5 was 38 degrees
+```
+
+Now let's build a function which takes a table `t` and a function `f`, then finds the first value `v` in table `t` for which `f(v)` returns a logically true value (neither `nil` nor `false`):
+
+```Lua
+function table_find_if(t,f)
+   for k,v in pairs(t) do
+      if f(v) then return k,v end
+   end
+   return nil
+end
+```
+
+If a table has both integer and non-integer keys, `pairs` first iterates over the integer indices (in ascending order) and then over the rest (in unspecified order).
+
+```Lua
+function table_find_if_exceeds(t,limit)
+   return table_find_if(t, function(v) return v > limit end)
+end
+```
+
+This one finds the first value in `t` which exceeds `limit`. Returns both the key and the value.
+
+Utilizing these helper functions, we could build a solution to the original problem like this:
+
+```Lua
+function print_first_day_when_temp_exceeded(limit, templist)
+   day,degrees = table_find_if_exceeds(templist, limit)
+   print(string.format("The temperature on day #%d exceeded the limit of %d by %d degrees.", day, limit, degrees-limit))
+end
+
+print_first_day_when_temp_exceeded(36, daily_max_temperatures)
+```
+
+###### Understanding the for..in loop
+
+The [Lua manual][] gives the following definition for the `for..in` loop:
+
+[Lua manual]: http://www.lua.org/manual/5.1/manual.html#2.4.5
+
+A `for` statement like
+
+```Lua
+for <var_1>, ···, <var_n> in <explist> do
+  <block>
+end
+```
+
+is equivalent to the following code:
+
+```Lua
+do
+  local f, s, var = <explist>
+  while true do
+    local <var_1>, ···, <var_n> = f(s, var)
+    var = <var_1>
+    if var == nil then break end
+    <block>
+  end
+end
+```
+
+(`do...end` creates a new lexical scope for a block of statements. `break` can be used to exit the innermost `while`, `repeat` or `for` loop.)
+
+To help you decipher this definition, study the following code example:
+
+```Lua
+function range(from,to)
+  local function f(s,var)
+    if var == nil then return from
+    elseif var >= to then return nil
+    else return var+1 end
+  end
+  return f,nil,nil
+end
+
+local s = ""
+for i in range(1,10) do s = s..tostring(i) end
+assert(s=="12345678910")
+```
+
+The `f` *iterator function* created and returned by `range(1,10)` will be called with the following arguments during the `for..in` loop (pseudo-code):
+
+```Lua
+f(s=nil,var=nil) => 1
+f(s=nil,var=1) => 2
+f(s=nil,var=2) => 3
+...
+f(s=nil,var=9) => 10
+f(s=nil,var=10) => nil
+```
+
+Upon the first call, `f` gets `var`=`nil`, which corresponds to the initial `var` value returned by `range`. This special "warm-up" case is handled by returning the first value in the series (`from`).
+
+From here on, `f` will be called with the same `var` which it returned in the previous iteration, and it continues to return `var+1` until `var` has reached the higher limit of `to`. At that point, `f` returns `nil`, which signals the `for..in` mechanism that the loop is over.
+
+In this example, we haven't made use of the `s` state variable, so I'll try to show you another - somewhat contrived and hypothetical (although possible) - example where `s` could be put to good use:
+
+```Lua
+function mysql_query(sql,params)
+  local stmt = mysql_prepare(sql)
+  local resultset = stmt:execute(params)
+  local f(res)
+    return res:fetch_row()
+  end
+  return f,resultset
+end
+
+for row in mysql_query("SELECT * FROM users WHERE year_of_birth<?",
+                       {year_of_birth=1975}) do
+  print(string.format("user %s was born in %d", row.name, row.year_of_birth))
+end
+```
+
+The example is contrived because we don't really need the state parameter - the following definition of `mysql_query` would also suffice:
+
+```Lua
+function mysql_query(sql,params)
+  local stmt = mysql_prepare(sql)
+  local resultset = stmt:execute(params)
+  return function() return resultset:fetch_row() end
+end
+```
+
+This version works because Lua functions are actually *closures*: they can hold references to the local variables that were in scope at the point of their definition, even after the block of code which created them (`mysql_query` in this case) has returned.
+
+###### Closures
+
+(This section may be a bit hard-core, feel free to skip it if you don't understand what is going on.)
+
+Formally, each closure (= function) is a `<proto,upvalues,env>` triple, where `proto` is a compiled function skeleton (prototype), `upvalues` is an array of references (pointers) to external local variables used by the closure and `env` is a table used to look up the value of global variables.
+
+When the `mysql_query` function gets compiled - which happens only once, at parse time - the following prototype is created for the iterator function it returns on each call:
+
+```Lua
+function()
+  return <uv1>:fetch_row()
+end
+```
+
+The compiler detects that each iterator function created by `mysql_query` will reference one external local variable (labeled `resultset` in the code). In the compiled prototype, `<uv1>` becomes a placeholder for the first element of the closure's `<upvalues>` array, which at this point does not exist yet.
+
+When we actually call `mysql_query` and the argument of the final `return` statement needs to be constructed, the already compiled function prototype is *instantiated*: a new closure is created with its `proto` set to the compiled prototype, `upvalues` set to a newly allocated array of one element (filled in with a reference to the `resultset` variable created *during this particular execution of* `mysql_query`) and `env` set to the environment associated with the `mysql_query` function.
+
+Functions (= closures) inherit their environment from the closure that created them. Functions defined at the top level inherit the environment of the top-level closure, which is initially the *global environment*, a singleton table created at VM initialization. The standard library functions are also registered in the global environment.
+
+The `env` of a closure can be retrieved and changed using the `getfenv(f)` and `setfenv(f,table)` functions, respectively. The global environment can be acquired by calling `getfenv(0)`. Using these functions, it's relatively easy to set up a sandboxed Lua environment for execution of potentially dangerous Lua code:
+
+```Lua
+local safe_env = { print = print, math = math }
+local f = loadfile("user-provided-script.lua")
+setfenv(f, safe_env)
+f()
+```
+
+With this setup, the only things `f()` will have access to are the basic language facilities (`if`, `while`, `for`, `function`, etc.), the `print` function and all functions in the `math` module. `f()` cannot access the global environment because `getfenv` is not available to it.
+
+Warning: if you do a `setfenv(0,{})`, you will be most likely doomed.
+
+###### Arithmetic progressions
+
+For this type of iteration, we use another variant of the `for` loop:
+
+```Lua
+local tablex = {}
+
+function tablex.range (start,finish,step)
+   if start == finish then return {start}
+   elseif start > finish then return {}
+   end
+   local res = {}
+   local k = 1
+   if not step then
+      step = finish > start and 1 or -1
+   end
+   for i=start,finish,step do res[k]=i; k=k+1 end
+   return res
+end
+
+local t = tablex.range(1,10,3)
+assert(#t==4 and t[1]==1 and t[2]==4 and t[3]==7 and t[4]==10)
+```
+
+What you are seeing here is probably the simplest approach to the creation of namespaces: just make a table and place functions into it.
+
+`function tablex.range() ... end` is shorthand for `tablex.range = function() ... end`: we create a function and assign it to a table element.
+
+The following function returns the *tail* of its list argument - a new list consisting of every element in the original list except the first:
+
+```Lua
+local append = table.insert
+
+function tail(ls)
+   local res = {}
+   for i = 2,#ls do
+      append(res,ls[i])
+   end
+   return res
+end
+```
+
+The `step` argument - which is missing here - defaults to 1.
+
+The `table.insert` function comes from the standard library. The reason why the code creates a local proxy for it may be interesting: `tail` - as a closure - has access to both external local variables in its enclosing scopes (via `upvalues`) and global variables (through its `environment`). When `tail`'s function prototype gets compiled, the compiler analyzes the function's variable references and assigns them into three groups: stack, upvalue and env references. References to stack variables - function arguments and local variables defined inside the function - will become simple pointers to a known element on the stack. References to upvalues - external locals in any of the enclosing scopes - will become pointers to elements of the `upvalues` array, while global references will be compiled into a table lookup (the name of the variable will be looked up - at runtime - in the closure's `env`).
+
+As stack and upvalue lookups need only a pointer dereference, and the position of a given item in the respective array is hard-coded into the function's bytecode, these can be significantly faster than the hash table lookup needed by a global reference.
+
+On the other hand, statically hard-coded upvalues cannot be replaced after the function has been compiled, so if we want dynamic code updates (live coding), the use of global references may be preferred.
+
+###### While..do..end
+
+The following function concatenates a list of path components into a complete path (a string), using the path separator passed as the first argument:
+
+```Lua
+function path_join(sep, ...)
+   local parts = {...}
+   for i,part in ipairs(parts) do
+      -- Strip leading slashes on all but first item
+      if i > 1 then
+         while part:sub(1,1) == sep do
+            part = part:sub(2)
+         end
+      end
+      -- Strip trailing slashes on all but last item
+      if i < #parts then
+         while part:sub(#part) == sep do
+            part = part:sub(1,#part-1)
+         end
+      end
+      parts[i] = part
+   end
+   return table.concat(parts,sep)
+end
+
+assert(path_join('/', '/usr', 'bin', 'luajit') == '/usr/bin/luajit')
+```
+
+The major new element here is `...` - the *vararg expression* - which is used to collect all of the arguments following `sep`.
+
+The `local parts = {...}` line places the extra arguments into a local table for easy access.
+
+`ipairs(t)` produces `(1,t[1])`, `(2,t[2])`, `(3,t[3])`, ... pairs until the first integer index which doesn't exist in the table. A possible Lua implementation:
+
+```Lua
+function ipairs(t)
+   local function f(t,var)
+      var = var + 1
+      local next = t[var]
+      if next then
+         return var, next
+      else
+         return nil
+      end
+   end
+   return f,t,0
+end
+```
+
+###### repeat <block> until <exp>
+
+```Lua
+function fs.readfile(path)
+   local fd = fs.open(path, "r")
+   local parts = {}
+   local length = 0
+   local offset = 0
+   repeat
+      local chunk, len = fs.read(fd, offset, 4096)
+      if len > 0 then
+         offset = offset + len
+         length = length + 1
+         parts[length] = chunk
+      end
+   until len == 0
+   fs.close(fd)
+   return table.concat(parts)
+end
+```
+
+###### for <var_1>, ..., <var_n> in <explist> do <block> end
+
+
+###### ...
+
+```Lua
+function table_pack(...)
+   local n = select('#',...)
+   return {n=n; ...}
+end
+```
+
+###### metatables
+
+```Lua
+local List = {}
+List.__index = List
+
+function List.new(t)
+   t = t or {}
+   return setmetatable(t, List)
+end
+
+local tinsert,tremove = table.insert,table.remove
+
+function List:append(i)
+   tinsert(self,i)
+   return self
+end
+
+List.push = tinsert
+
+function List:extend(L)
+   for i = 1,#L do tinsert(self,L[i]) end
+   return self
+end
+
+function List:insert(i, x)
+   tinsert(self,i,x)
+   return self
+end
+
+function List:remove (i)
+   tremove(self,i)
+   return self
+end
+
+function List:remove_value(x)
+   for i=1,#self do
+      if self[i]==x then tremove(self,i) return self end
+   end
+   return self
+end
+
+function List:pop(i)
+   if not i then i = #self end
+   return tremove(self,i)
+end
+
+function List:count(x)
+   local cnt=0
+   for i=1,#self do
+      if self[i]==x then cnt=cnt+1 end
+   end
+   return cnt
+end
+
+function List:reverse()
+   local t = self
+   local n = #t
+   local n2 = n/2
+   for i = 1,n2 do
+      local k = n-i+1
+      t[i],t[k] = t[k],t[i]
+   end
+   return self
+end
+
+function List:minmax()
+   local vmin,vmax = 1e70,-1e70
+   for i = 1,#self do
+      local v = self[i]
+      if v < vmin then vmin = v end
+      if v > vmax then vmax = v end
+   end
+   return vmin,vmax
+end
+
+function List:len()
+   return #self
+end
+
+function List:clone()
+   local ls = List.new({})
+   ls:extend(self)
+   return ls
+end
+
+function List:__concat(L)
+   local ls = self:clone()
+   ls:extend(L)
+   return ls
+end
+
+function List:equals(L)
+   if #self ~= #L then return false end
+   for i = 1,#self do
+      if self[i] ~= L[i] then return false end
+   end
+   return true
+end
+
+List.__eq = List.equals
+
+function List:map(f)
+   local ls = List.new()
+   for i=1,#self do
+      ls:append(f(self[i]))
+   end
+   return ls
+end
+
+local function tostring_q(val)
+   local s = tostring(val)
+   if type(val) == 'string' then
+      s = '"'..s..'"'
+   end
+   return s
+end
+
+function List:join(delim,tostrfn)
+   delim = delim or ''
+   tostrfn = tostrfn or tostring_q
+   return table.concat(self:map(tostrfn), delim)
+end
+
+function List:__tostring()
+   return '{'..self:join(',')..'}'
+end
+
+setmetatable(List,{
+    __call = function (tbl,arg)
+       return List.new(arg)
+    end,
+})
+```
+
+```Lua
+local ls = List()
+assert(getmetatable(ls)==List)
+ls:push(1)
+ls:append("fire")
+ls:push(3.14)
+assert(ls:equals {1,"fire",3.14})
+ls:extend(ls)
+assert(ls:equals {1,"fire",3.14,1,"fire",3.14})
+ls:insert(3,"water")
+assert(ls:equals {1,"fire","water",3.14,1,"fire",3.14})
+ls:remove(1)
+ls:remove(4)
+assert(ls:equals {"fire","water",3.14,"fire",3.14})
+assert(tostring(ls)=='{"fire","water",3.14,"fire",3.14}')
+ls:remove_value(3.14)
+assert(ls:equals {"fire","water","fire",3.14})
+assert(ls:pop()==3.14)
+assert(ls:pop(2)=="water")
+assert(ls:equals {"fire","fire"})
+assert(ls:count("fire")==2)
+assert(ls:count("water")==0)
+ls = List({1,6,3,8,10})
+ls:reverse()
+assert(ls:equals {10,8,3,6,1})
+local min,max = ls:minmax()
+assert(min==1 and max==10)
+assert(ls:len()==5)
+clone = ls:clone()
+assert(clone==ls)
+clone[1]=20
+assert(clone~=ls)
+assert(ls:equals {10,8,3,6,1})
+assert(clone:equals {20,8,3,6,1})
+```
+
+###### coroutines
+
+```Lua
+local function _dirfiles(dir)
+   local dirs = {}
+   local files = {}
+   local append = table.insert
+   for f in ldir(dir) do
+      if f ~= '.' and f ~= '..' then
+         local p = path.join(dir,f)
+         local mode = path.attrib(p,'mode')
+         if mode=='directory' then
+            append(dirs,f)
+         else
+            append(files,f)
+         end
+      end
+   end
+   return dirs,files
+end
+```
+
+```Lua
+local function _walker(root,bottom_up)
+   local dirs,files = _dirfiles(root)
+   if not bottom_up then coroutine.yield(root,dirs,files) end
+   for i,d in ipairs(dirs) do
+      _walker(root..path.sep..d,bottom_up)
+   end
+   if bottom_up then coroutine.yield(root,dirs,files) end
+end
+```
+
+```Lua
+local dir = {}
+
+function dir.walk(root,bottom_up)
+   return coroutine.wrap(function () _walker(root,bottom_up) end)
+end
+
+function dir.rmtree(fullpath)
+   for root,dirs,files in dir.walk(fullpath,true) do
+      for i,f in ipairs(files) do
+         remove(path.join(root,f))
+      end
+      rmdir(root)
+   end
+end
+```
+
+```Lua
+function dir.dirtree(d)
+   local exists, isdir = path.exists, path.isdir
+   local sep = path.sep
+
+   local last = sub (d,-1)
+   if last == sep or last == '/' then
+      d = sub(d,1,-2)
+   end
+
+   local function yieldtree(dir)
+      for entry in ldir(dir) do
+         if entry ~= "." and entry ~= ".." then
+            entry = dir .. sep .. entry
+            if exists(entry) then  -- Just in case a symlink is broken.
+               local is_dir = isdir(entry)
+               yield(entry,is_dir)
+               if is_dir then
+                  yieldtree(entry)
+               end
+            end
+         end
+      end
+   end
+
+   return wrap(function() yieldtree(d) end)
+end
+```
