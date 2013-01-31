@@ -1266,6 +1266,7 @@ If you want to get a complete picture of Lua, read up on the following topics in
 * tail calls
 * the exact semantics of metatables and metamethods
 * garbage collection, weak tables
+* module API
 * standard libraries
 * the C API (not really needed as LuaJIT has a great FFI)
 
