@@ -379,7 +379,9 @@ One last thing before we can build this: the `interface/vcos/glibc/vcos_backtrac
  }
 ```
 
-(If you don't want to fiddle with copy/pasting these files, just fetch them from my Git repository at https://github.com/cellux/rpi-buildroot)
+(Note: a fix for this has been merged to upstream on Jan 22 2013 which made this patch unnecessary.)
+
+If you don't want to fiddle with copy/pasting these files, just fetch them from my Git repository at https://github.com/cellux/rpi-buildroot
 
 Now execute `make menuconfig`, enable the new package(s), `make` the whole thing and unpack the resulting `bootfs.tar.gz` and `rootfs.tar.gz` (as root) to the correct places.
 
