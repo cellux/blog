@@ -101,9 +101,13 @@ Buildroot can use [ccache] for compilation of C/C++ source code; this means that
     <th>GCC compiler Version</th>
     <td>`GCC 4.7.x`</td>
   </tr>
+  <tr>
+    <th>Additional gcc options</th>
+    <td>`--with-float=hard --with-fpu=vfp`</td>
+  </tr>
 </table>
 
-We'll use the latest `rpi-3.6.y` kernel branch from the [foundation's git repository][raspberrypi-linux], so here we select matching kernel headers.
+We'll use the latest `rpi-3.6.y` kernel branch from the [foundation's git repository][raspberrypi-linux], so here we select matching kernel headers. The additional GCC options are required for hardfp.
 
 [raspberrypi-linux]: https://github.com/raspberrypi/linux
 
@@ -128,6 +132,10 @@ You may want to add others - I prefer to keep these pruned to the absolute minim
   <tr>
     <th>Use software floating point by default</th>
     <td>`NO`</td>
+  </tr>
+  <tr>
+    <th>Target Optimizations</th>
+    <td>`-pipe -mfloat-abi=hard -mfpu=vfp`</td>
   </tr>
   <tr>
     <th>Use ARM Vector Floating Point unit</th>
