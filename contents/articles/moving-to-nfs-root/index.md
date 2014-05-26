@@ -54,11 +54,13 @@ While this setup is rather complicated and slow, it works. Ideally, the external
 
 [fantec]: http://www.fantec.eu/html/en/2/artId/__1515/gid/__500905309053790537290/article.html
 
-The next step was to create a suitable root filesystem on `/mnt/shares/rpifs`. At first, I just used the files from the default Raspbian installation:
+The next step was to place a suitable root filesystem on `/mnt/shares/rpifs`. At first, I just used the files from the default Raspbian installation:
 
 ```bash
 mkdir /tmp/raspbian
-mount -t ext4 -o loop,offset=$((122880*512)) 2012-12-16-wheezy-raspbian.img /tmp/raspbian/
+mount -t ext4 -o loop,offset=$((122880*512)) \
+  2012-12-16-wheezy-raspbian.img \
+  /tmp/raspbian/
 rsync -av /tmp/raspbian/ /mnt/shares/rpifs/
 ```
 
@@ -81,7 +83,7 @@ Disk identifier: 0x00017b69
 
 (For some reason, this `fdisk` invocation doesn't provide the correct results on older distributions, like Ubuntu 10.04 Lucid Lynx. It does work on a recent Arch Linux, though. Perhaps a bug in `fdisk`?)
 
-As you can see, the FAT32 partition (`/boot`) comes first, starting at sector #8192, then comes the ext4 fs (`/`) at sector #122880. As each sector uses 512 bytes, we'll have to multiply the sector number by 512 to get the byte offset.
+As you can see, the FAT32 partition (`/boot`) comes first, starting at sector #8192, then comes the ext4 fs (`/`) at sector #122880. As each sector uses 512 bytes, we'll have to multiply the sector number by 512 to get the byte offset of the root partition.
 
 The only thing left was telling the Pi Linux kernel that it should mount its root fs from the router over NFS, instead of locally from the SD card.
 
@@ -89,11 +91,13 @@ As I wrote in the [previous][] post, the Linux kernel gets its command line from
 
 [previous]: ../my-first-day-with-the-raspberry-pi/
 
-In the Raspbian image which I downloaded, this file has the following contents (also verifiable with the offset mount trick):
+In the Raspbian image which I downloaded, this file has the following contents:
 
 ```
 dwc_otg.lpm_enable=0 console=ttyAMA0,115200 kgdboc=ttyAMA0,115200 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline rootwait
 ```
+
+(all on one line)
 
 This had to be changed like this:
 
