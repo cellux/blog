@@ -52,7 +52,7 @@ mount -t ext4 -o loop /mnt/shares/samsung/rpifs.img /mnt/shares/rpifs
 
 While this setup is rather complicated and slow, it works. Ideally, the external disks would form a RAID1 cluster (provided by a NAS device like [this][fantec]), and the RAID volume would be formatted with ext4 (which is *much* faster than `ntfs-3g` on Linux).
 
-[fantec]: http://www.fantec.de/html/en/2/artId/__1515/gid/__500905309053790537290/article.html
+[fantec]: http://www.fantec.eu/html/en/2/artId/__1515/gid/__500905309053790537290/article.html
 
 The next step was to create a suitable root filesystem on `/mnt/shares/rpifs`. At first, I just used the files from the default Raspbian installation:
 
