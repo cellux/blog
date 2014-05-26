@@ -16,13 +16,13 @@ The first thing I did was building a LEGO case for it:
 
 It's not a top engineering feat for sure, but the spaceman is kinda cool. :-)
 
-For those of you who don't know what a Raspberry Pi is: it's a credit-card sized mini-computer developed by a bunch of elite computer geeks who call themselves the [Raspberry Pi Foundation][1]. It looks like this:
+For those of you who don't know what a Raspberry Pi is: it's a credit-card sized mini-computer developed by a bunch of computer geeks who call themselves the [Raspberry Pi Foundation][1]. It looks like this:
 
 [1]: http://www.raspberrypi.org/about
 
 <p><img src="img_7073.jpg"/></p>
 
-It has an SD card reader, two USB 2.0 ports, a 10/100 Ethernet port, a HDMI connector, an RCA video out, a 3.5 mm audio jack and a bunch of programmable pins which can be used to interface it with other devices. It can be powered through a micro USB port, using any cell phone charger which can supply the steady 5V and 700 mA it needs.
+It has an SD card reader, two USB 2.0 ports, a 10/100 Ethernet port, a HDMI connector, an RCA video out, a 3.5 mm audio jack and a bunch of programmable pins which can be used to connect it to other devices. It can be powered through a micro USB port, using any cell phone charger which can supply the steady 5V and 700 mA it needs.
 
 The heart of the machine is this SoC (System on a Chip) in the center of the board:
 
@@ -30,7 +30,7 @@ The heart of the machine is this SoC (System on a Chip) in the center of the boa
 
 This small chip contains an ARM 1176JZF-S CPU, a Broadcom VideoCore IV GPU and 512 MB RAM (these are the specs for my Model B - there is also a Model A with only 256 MB RAM, one USB port and no Ethernet).
 
-To minimize the cost, there is no on/off button or reset switch: the only way to reset the system is to pull the plug and insert it again.
+To minimize the cost, there is no on/off button or reset switch: the only way to reset the board is to pull and reinsert the micro USB plug.
 
 ##### The boot process
 
